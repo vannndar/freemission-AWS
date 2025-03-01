@@ -16,7 +16,7 @@ AWS EC2 instace is used to receive, process and transmit data from client-server
     sudo yum install python3-opencv -y
     ```
 
-    Note: to connect via putty, you need private key file (.pem) and public IP address of the instance that can be seen on connect tab. Dont forget to change username in data to ec2-user.
+    Note: to connect via putty, you need private key file (.ppk) and public IP address of the instance that can be seen on connect tab. Dont forget to change username in data to ec2-user.
 
 ## Raspberry Pi
 
