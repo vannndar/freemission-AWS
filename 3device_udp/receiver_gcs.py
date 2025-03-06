@@ -4,7 +4,7 @@ import numpy as np
 import struct
 
 # Set up IP and ports
-EC2_IP = "<EC2_PUBLIC_IP>"  # Replace with your EC2's public IP address
+EC2_IP = "18.136.107.21"  # Replace with your EC2's public IP address
 UDP_PORT_RECEIVE = 8081  # Port to receive video data from EC2
 UDP_PORT_SEND = 8080  # Port to send video to EC2
 
