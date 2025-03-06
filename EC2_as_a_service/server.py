@@ -2,6 +2,7 @@ from flask import Flask, Response
 import socket
 import cv2
 import numpy as np
+import time  # Import time module to measure latency
 
 app = Flask(__name__)
 
@@ -16,6 +17,8 @@ sock.bind((UDP_IP, UDP_PORT))
 # Function to continuously receive frames and stream them to the browser
 def generate_frames():
     while True:
+        start_time = time.time()  # Record the time at the start of frame processing
+
         # Receive video data from Raspberry Pi
         data, addr = sock.recvfrom(65536)  # Max UDP packet size
         np_arr = np.frombuffer(data, np.uint8)  # Convert the byte data to numpy array
@@ -28,6 +31,12 @@ def generate_frames():
         # Encode the frame as JPEG
         _, buffer = cv2.imencode(".jpg", frame)
         frame_bytes = buffer.tobytes()
+
+        # Calculate latency (time taken for frame processing)
+        latency = time.time() - start_time  # Difference between start and end time
+
+        # Print the latency to the console (can be logged as well)
+        print(f"Frame latency: {latency:.4f} seconds")
 
         # Yield the frame in MJPEG format
         yield (
