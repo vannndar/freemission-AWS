@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>H264</title>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let decoder = null
+        function createDecoder() {
+            return new VideoDecoder({
+                output: frame => {
+                canvas.width = frame.codedWidth;
+                canvas.height = frame.codedHeight;
+                ctx.drawImage(frame, 0, 0);
+                frame.close();
+            },
+            error: e => {
+                console.error("Decoder error:", e);
+                if (decoder.state !== "closed") {
+                    decoder.close();  
+                }
+                decoder = createDecoder();
+                decoder.configure({
+                    codec: 'avc1.4D4028', 
+                    hardwareAcceleration: 'prefer-software',
+                });
+            }
+        });
+        }
+
+        decoder = createDecoder()
+        decoder.configure({
+            codec: 'avc1.4D4028', // baseline profile H264
+            hardwareAcceleration: 'prefer-hardware',
+        });
+
+        const ws = new WebSocket('{{scheme}}://{{ip}}:{{port}}/ws_h264_stream');
+        
+        // Important: expect binary data
+        ws.binaryType = "arraybuffer";
+        
+        ws.onopen = () => {
+            console.log("WebSocket connected.");
+            ws.send("READY");  // Notify server we're ready
+        };
+        
+        ws.onmessage = async (event) => {
+            const arrayBuffer = event.data;  // Already ArrayBuffer because binaryType
+            const dv = new DataView(arrayBuffer);
+
+            // Read metadata from the first 9 bytes
+            const timestamp_us = Number(dv.getBigUint64(0, false)); // big-endian timestamp
+            const frameTypeByte = dv.getUint8(8);
+            const frameType = frameTypeByte === 1 ? "key" : "delta";
+
+            // Extract the raw frame data (skip the first 9 bytes: timestamp + frame type)
+            const rawFrame = new Uint8Array(arrayBuffer, 9);
+
+            try {
+                decoder.decode(new EncodedVideoChunk({
+                    type: frameType, 
+                    timestamp: timestamp_us,  // microseconds
+                    data: rawFrame
+                }));
+            } catch (e) {
+                console.error("Decode failed:", e);
+            }
+        };
+        </script>
+    <body>
+</html>
