@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>H264</title>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let decoder = null
+    function createDecoder() {
+        return new VideoDecoder({
+            output: frame => {
+                canvas.width = frame.codedWidth;
+                canvas.height = frame.codedHeight;
+                ctx.drawImage(frame, 0, 0);
+                frame.close();
+            },
+            error: e => {
+                console.error("Decoder error:", e);
+                if (decoder.state !== "closed") {
+                    decoder.close();  
+                }
+                decoder = createDecoder();
+                decoder.configure({
+                    codec: 'avc1.4D4028', 
+                    hardwareAcceleration: 'prefer-hardware',
+                });
+            }
+        });
+    }
+
+    // Create WebCodecs VideoDecoder
+    decoder = createDecoder()
+    decoder.configure({
+        codec: 'avc1.4D4028', // baseline profile H264
+        hardwareAcceleration: 'prefer-hardware',
+    });
+
+    // Open SSE connection
+    const eventSource = new EventSource('{{scheme}}://{{ip}}:{{port}}/h264_stream');
+
+    eventSource.onmessage = async (event) => {
+        try {
+        // Step 1: Parse and decode base64 to raw frame data
+        const data = JSON.parse(event.data);
+        const rawFrame = Uint8Array.from(atob(data.message), c => c.charCodeAt(0));
+
+        // Step 2: Read metadata header
+        const dv = new DataView(rawFrame.buffer);
+        const timestamp_us = Number(dv.getBigUint64(0, false)); // big-endian
+        const frameTypeByte = dv.getUint8(8);
+        const frameType = frameTypeByte === 1 ? "key" : "delta";
+        
+        // Step 3: Extract the actual raw frame data
+        const frameData = new Uint8Array(rawFrame.buffer.slice(9)); // Skip the first 9 bytes (timestamp + type)
+            
+        const chunk = new EncodedVideoChunk({
+            timestamp: timestamp_us, // microseconds
+            type: frameType, 
+            data: frameData
+        });
+        
+        decoder.decode(chunk);
+
+        } catch (e) {
+            console.error('Error decoding frame:', e);
+        }
+    };
+
+    eventSource.onerror = (err) => {
+        console.error('SSE error:', err);
+    };
+    </script>
+<body>
+</html>
