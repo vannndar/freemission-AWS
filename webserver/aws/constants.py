@@ -1,10 +1,10 @@
 import asyncio
 from enum import Enum
-from multiprocessing import Process
 from typing import List, Optional
 from asyncio import DatagramTransport, Queue, Task, Server
 from inference import ShmQueue
 from utils.logger import Log
+from utils.multi_process import Process
 from utils.public_ip import get_public_ip
 
 frame_queues: List[Queue] = []
@@ -158,9 +158,12 @@ class Format(Enum):
 FFMPEG_DIR       = r"C:\ffmpeg\bin"
 INCOMING_FORMAT  = Format.H264      # Valid: JPG or H264
 OUTGOING_FORMAT  = Format.H264      # Valid: JPG or H264
-PROTOCOL_FORMAT  = 'TCP'           # Valid: UDP or TCP
+PROTOCOL_FORMAT  = 'UDP'           # Valid: UDP or TCP
 INFERENCE_ENABLED = bool(True)
 SHOW_FPS = bool(True)
+
+SOURCE_WIDTH = 640
+SOURCE_HEIGHT = 480
 
 encoder = base_codec('libx264')
 decoder = base_codec('h264')

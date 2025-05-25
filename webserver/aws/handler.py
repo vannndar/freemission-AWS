@@ -1,10 +1,10 @@
 
 import asyncio
 import ctypes
-import multiprocessing
-from multiprocessing import Lock, Semaphore, Value, Array
+from utils.multi_process import mp as multiprocessing
+from utils.multi_process import Lock, Semaphore, Value, Array
 import os
-from constants import INFERENCE_ENABLED, ServerContext, frame_queues, encode_queue, decode_queue, jpg_queue, EC2Port, encoder, decoder, ordered_queue, protocol_closed, frame_dispatch_reset
+from constants import INFERENCE_ENABLED, ServerContext, frame_queues, encode_queue, decode_queue, jpg_queue, EC2Port, encoder, decoder, ordered_queue, protocol_closed, frame_dispatch_reset, SOURCE_WIDTH, SOURCE_HEIGHT
 from protocol import JPG_TO_JPG_PROTOCOL, JPG_TO_H264_PROTOCOL, H264_TO_JPG_PROTOCOL, H264_TO_H264_PROTOCOL, JPG_TO_JPG_TCP, JPG_TO_H264_TCP, H264_TO_JPG_TCP, H264_TO_H264_TCP
 from consumers import JPG_TO_JPG_Consumer, JPG_TO_H264_Consumer, H264_TO_JPG_Consumer, H264_TO_H264_Consumer
 from inference import ShmQueue, ObjectDetection, SyncObject
@@ -43,12 +43,17 @@ sync_out = SyncObject(
     g_lock    = Lock()                                                            
 )
 
-ctx.input_queue  = ShmQueue(shape=(480,640,3),sync=sync_input, capacity=SHM_CAPACITY)
-ctx.output_queue = ShmQueue(shape=(480,640,3),sync=sync_out, capacity=SHM_CAPACITY)
+ctx.input_queue  = ShmQueue(shape=(SOURCE_HEIGHT, SOURCE_WIDTH, 3),sync=sync_input, capacity=SHM_CAPACITY)
+ctx.output_queue = ShmQueue(shape=(SOURCE_HEIGHT, SOURCE_WIDTH, 3),sync=sync_out, capacity=SHM_CAPACITY)
 
 def inference(**kwargs):
-    onnx = ObjectDetection(**kwargs)
-    onnx.run()
+    try:
+        onnx = ObjectDetection(**kwargs)
+        onnx.run()
+    except KeyboardInterrupt:
+        return
+    except Exception as e:
+        print(f"error at inference: {e}")
 
 '''
     TCP
